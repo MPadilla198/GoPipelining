@@ -18,7 +18,8 @@ func init() {
 }
 
 func TestBuilder_AddStage(t *testing.T) {
-	assertAddStagePanic(t, b.AddStage)
+	// TODO create panic-needed test cases
+	// assertAddStagePanic(t, b.AddStage)
 }
 
 func TestBuilder_Build(t *testing.T) {
