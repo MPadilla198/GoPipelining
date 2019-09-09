@@ -9,7 +9,7 @@ type Function interface{}
 var done = reflect.TypeOf(struct{}{})
 
 type PipelineBuilder interface {
-	Build() Pipeline
+	Build() *Pipeline
 	AddStage(Function, uint) *builder
 }
 
@@ -21,6 +21,10 @@ type stage struct {
 
 type builder struct {
 	stages []stage
+}
+
+func NewPipelineBuilder() PipelineBuilder {
+	return &builder{stages: make([]stage, 0)}
 }
 
 func (b *builder) Build() *Pipeline {
