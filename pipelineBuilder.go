@@ -3,7 +3,6 @@ package PipinHot
 import "reflect"
 
 // For a while it'll just use interface{}
-// TODO figure out how to use reflect instead of interface{}
 type Function interface{}
 
 var done = reflect.TypeOf(struct{}{})
@@ -42,8 +41,7 @@ func (b *builder) AddStage(fptr Function, setNodeCnt uint) *builder {
 	// Makes sure input function has 1 arg and 1 return value only
 	// Also checks that fptr is actually a function
 	if fnParams.NumIn() != 1 || fnParams.NumOut() != 1 {
-		// TODO make valid panic statement
-		panic("")
+		panic("Invalid number of parameters/returns in function")
 	}
 
 	// Param types
