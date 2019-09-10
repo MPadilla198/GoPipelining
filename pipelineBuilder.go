@@ -37,7 +37,7 @@ func (b *builder) Build() *Pipeline {
 func (b *builder) AddStage(fptr Function, setNodeCnt uint) *builder {
 	// fptr is a pointer to a function.
 	fn := reflect.ValueOf(fptr)
-	fnParams := fn.Type().Elem()
+	fnParams := fn.Type()
 
 	// Makes sure input function has 1 arg and 1 return value only
 	// Also checks that fptr is actually a function
@@ -67,8 +67,8 @@ func (b *builder) AddStage(fptr Function, setNodeCnt uint) *builder {
 			for {
 				// Select from input of channels: in and done
 				chosen, recv, _ := reflect.Select([]reflect.SelectCase{
-					{reflect.SelectRecv, inChan, nil},
-					{reflect.SelectRecv, doneChan, nil},
+					{reflect.SelectRecv, inChan, reflect.ValueOf(0)},
+					{reflect.SelectRecv, doneChan, reflect.ValueOf(0)},
 				})
 				switch chosen {
 				case 0: // Something comes in the channel
