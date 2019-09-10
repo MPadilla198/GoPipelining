@@ -9,7 +9,7 @@ type Function interface{}
 var done = reflect.TypeOf(struct{}{})
 
 type PipelineBuilder interface {
-	Build() *Pipeline
+	Build() Pipeline
 	AddStage(Function, uint) *builder
 }
 
@@ -27,8 +27,8 @@ func NewPipelineBuilder() PipelineBuilder {
 	return &builder{stages: make([]stage, 0)}
 }
 
-func (b *builder) Build() *Pipeline {
-	return nil
+func (b *builder) Build() Pipeline {
+	return newPipeline()
 }
 
 // AddStage expects fptr to be a pointer to a non-nil function
