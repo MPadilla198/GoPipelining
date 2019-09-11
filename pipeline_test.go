@@ -54,6 +54,7 @@ func TestPipeline_Execute(t *testing.T) {
 	}
 
 	intPipe := simpleIntPipe()
+	defer intPipe.Close()
 
 	for _, tCase := range intTestCases {
 		if err := intPipe.Execute(tCase.input); (err != nil) != tCase.errorExpected {
@@ -72,6 +73,7 @@ func TestPipeline_Execute(t *testing.T) {
 	}
 
 	strPipe := simpleStringPipe()
+	defer strPipe.Close()
 
 	for _, tCase := range strTestCases {
 		if err := strPipe.Execute(tCase.input); (err != nil) != tCase.errorExpected {
@@ -91,6 +93,7 @@ func TestPipeline_Execute(t *testing.T) {
 	}
 
 	boolPipe := simpleBoolPipe()
+	defer boolPipe.Close()
 
 	for _, tCase := range boolTestCases {
 		if err := boolPipe.Execute(tCase.input); (err != nil) != tCase.errorExpected {
@@ -115,6 +118,7 @@ func TestPipeline_Next(t *testing.T) {
 	}
 
 	pipe := newTestPipe(1)
+	defer pipe.Close()
 
 	for i, tCase := range testCases {
 		err := pipe.Execute(tCase.input...)
@@ -145,6 +149,7 @@ func TestPipeline_Flush(t *testing.T) {
 	}
 
 	pipe := newTestPipe(1)
+	defer pipe.Close()
 
 	for _, tCase := range testCases {
 		err := pipe.Execute(tCase.input)
@@ -187,6 +192,8 @@ func TestPipeline(t *testing.T) {
 	}()
 
 	pipe := newTestPipe(1)
+	defer pipe.Close()
+
 	results := make([]interface{}, 0)
 
 	err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
@@ -207,8 +214,6 @@ func TestPipeline(t *testing.T) {
 	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
 		t.Error("Results don't match!")
 	}
-
-	pipe.Close()
 }
 
 func TestAutoPipeline(t *testing.T) {
@@ -219,6 +224,7 @@ func TestAutoPipeline(t *testing.T) {
 	}()
 
 	pipe := newTestPipe(1)
+	defer pipe.Close()
 	results := make([]interface{}, 0)
 
 	err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
@@ -239,8 +245,6 @@ func TestAutoPipeline(t *testing.T) {
 	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
 		t.Error("Results don't match!")
 	}
-
-	pipe.Close()
 }
 
 func BenchmarkPipeline(b *testing.B) {

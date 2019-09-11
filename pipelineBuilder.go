@@ -34,6 +34,8 @@ func (b *builder) Build() Pipeline {
 // setNodeCnt sets an exact amount of nodes to be instantiated
 // If setNodeCnt is set to 0, the stage node cnt will be controlled automatically
 func (b *builder) AddStage(fptr Function, setNodeCnt uint) *builder {
+	// BIG TODO needs to check that new stage matches with stage before it (params and returns)
+
 	// fptr is a pointer to a function.
 	fn := reflect.ValueOf(fptr)
 	fnParams := fn.Type()
