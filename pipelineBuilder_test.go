@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-func assertAddStagePanic(t *testing.T, fn func(Function, uint) *builder, in Function, n uint, fnNum int, mustPanic bool) {
+func assertAddStagePanic(t *testing.T, fn func(uint, Function) *builder, in Function, n uint, fnNum int, mustPanic bool) {
 	defer func() {
 		if r := recover(); (r != nil) != mustPanic {
 			t.Errorf("AddStage method #%d did not pass.", fnNum)
 			t.Error(r)
 		}
 	}()
-	fn(in, n)
+	fn(n, in)
 }
 
 var b PipelineBuilder
@@ -20,7 +20,7 @@ var b2 PipelineBuilder
 
 func init() {
 	b = NewPipelineBuilder()
-	b2 = NewPipelineBuilder().AddStage(func(n int) int { return n + 1 }, 0).AddStage(func(str string) bool { return str == "Hello, World!" }, 10)
+	b2 = NewPipelineBuilder().AddStage(0, func(n int) int { return n + 1 }).AddStage(10, func(str string) bool { return str == "Hello, World!" })
 }
 
 func TestBuilder_AddStage(t *testing.T) {
@@ -72,15 +72,15 @@ func TestBuilder(t *testing.T) {
 
 	nB := NewPipelineBuilder()
 
-	nB.AddStage(func(n int) int { return n + 1 }, 0)
-	nB.AddStage(func(str string) bool { return str == "Hello, World!" }, 20)
-	nB.AddStage(func(p struct {
+	nB.AddStage(0, func(n int) int { return n + 1 })
+	nB.AddStage(20, func(str string) bool { return str == "Hello, World!" })
+	nB.AddStage(15, func(p struct {
 		n   int
 		str string
 	}) bool {
 		return p.n < 100 || p.str == "true"
-	}, 15)
-	nB.AddStage(func(n int) struct {
+	})
+	nB.AddStage(9999, func(n int) struct {
 		high bool
 		low  bool
 	} {
@@ -88,7 +88,7 @@ func TestBuilder(t *testing.T) {
 			high bool
 			low  bool
 		}{n > 1000, n < 10}
-	}, 9999)
+	})
 
 	nB.Build()
 }
@@ -97,15 +97,15 @@ func BenchmarkBuilder(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		nB := NewPipelineBuilder()
 
-		nB.AddStage(func(n int) int { return n + 1 }, 0)
-		nB.AddStage(func(str string) bool { return str == "Hello, World!" }, 20)
-		nB.AddStage(func(p struct {
+		nB.AddStage(0, func(n int) int { return n + 1 })
+		nB.AddStage(20, func(str string) bool { return str == "Hello, World!" })
+		nB.AddStage(15, func(p struct {
 			n   int
 			str string
 		}) bool {
 			return p.n < 100 || p.str == "true"
-		}, 15)
-		nB.AddStage(func(n int) struct {
+		})
+		nB.AddStage(9999, func(n int) struct {
 			high bool
 			low  bool
 		} {
@@ -113,7 +113,7 @@ func BenchmarkBuilder(b *testing.B) {
 				high bool
 				low  bool
 			}{n > 1000, n < 10}
-		}, 9999)
+		})
 
 		nB.Build()
 	}
