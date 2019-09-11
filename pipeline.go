@@ -1,9 +1,12 @@
 package PipinHot
 
+import "errors"
+
 type Pipeline interface {
 	Execute(...interface{}) error
-	Next() interface{}
-	Flush() []interface{}
+	Next() (interface{}, bool)
+	WaitAndFlush() []interface{}
+	// pipeline panics if pipeline is used again after calling Close()
 	Close()
 }
 
@@ -11,16 +14,16 @@ type pipeline struct{}
 
 // TODO IMPLEMENT
 func (p *pipeline) Execute(vals ...interface{}) error {
-	return nil
+	return errors.New("not implemented")
 }
 
 // TODO IMPLEMENT
-func (p *pipeline) Next() interface{} {
-	return 0
+func (p *pipeline) Next() (interface{}, bool) {
+	return nil, false
 }
 
 // TODO IMPLEMENT
-func (p *pipeline) Flush() []interface{} {
+func (p *pipeline) WaitAndFlush() []interface{} {
 	return []interface{}{}
 }
 
