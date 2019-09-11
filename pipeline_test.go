@@ -7,15 +7,15 @@ func newTestPipe(n uint) Pipeline {
 }
 
 func simpleIntPipe() Pipeline {
-	return NewPipelineBuilder().AddStage(func(n int) int { return n * n }, 0).Build()
+	return NewPipelineBuilder().AddStage(func(n int) int { return n * n }, 1).Build()
 }
 
 func simpleStringPipe() Pipeline {
-	return NewPipelineBuilder().AddStage(func(n string) string { return n + "..." }, 0).Build()
+	return NewPipelineBuilder().AddStage(func(n string) string { return n + "..." }, 1).Build()
 }
 
 func simpleBoolPipe() Pipeline {
-	return NewPipelineBuilder().AddStage(func(n bool) bool { return !n }, 0).Build()
+	return NewPipelineBuilder().AddStage(func(n bool) bool { return !n }, 1).Build()
 }
 
 // Checks if array has the same values regardless of order
@@ -67,8 +67,8 @@ func TestPipeline_Execute(t *testing.T) {
 	}{
 		{[]interface{}{"Hello", "hef", 23, false}, true},
 		{[]interface{}{12, false, struct{ n int }{1}}, true},
-		{[]interface{}{"geg", "sgse", "egsaf"}, false},
-		{[]interface{}{"fsef"}, false},
+		{[]interface{}{"name", "bat", "hat"}, false},
+		{[]interface{}{"base"}, false},
 	}
 
 	strPipe := simpleStringPipe()
@@ -180,5 +180,133 @@ func TestPipeline_Close(t *testing.T) {
 }
 
 func TestPipeline(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Error("TestPipeline panicked.")
+		}
+	}()
 
+	pipe := newTestPipe(1)
+	results := make([]interface{}, 0)
+
+	err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	v, ok := pipe.Next()
+	if !ok {
+		t.Error("Pipe Next() problems.")
+	}
+	results = append(results, v)
+
+	flushed := pipe.WaitAndFlush()
+	results = append(results, flushed)
+
+	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
+		t.Error("Results don't match!")
+	}
+
+	pipe.Close()
+}
+
+func TestAutoPipeline(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Error("TestPipeline panicked.")
+		}
+	}()
+
+	pipe := newTestPipe(1)
+	results := make([]interface{}, 0)
+
+	err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	v, ok := pipe.Next()
+	if !ok {
+		t.Error("Pipe Next() problems.")
+	}
+	results = append(results, v)
+
+	flushed := pipe.WaitAndFlush()
+	results = append(results, flushed)
+
+	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
+		t.Error("Results don't match!")
+	}
+
+	pipe.Close()
+}
+
+func BenchmarkPipeline(b *testing.B) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.Error("TestPipeline panicked.")
+		}
+	}()
+
+	for i := 0; i < b.N; i++ {
+		pipe := newTestPipe(1)
+		results := make([]interface{}, 1)
+
+		err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		v, ok := pipe.Next()
+		if !ok {
+			b.Error("Pipe Next() problems.")
+		}
+		results = append(results, v)
+
+		flushed := pipe.WaitAndFlush()
+		results = append(results, flushed)
+
+		if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}); !isEqual {
+			b.Error("Results don't match!")
+		}
+
+		pipe.Close()
+	}
+}
+
+func BenchmarkAutoPipeline(b *testing.B) {
+	defer func() {
+		if r := recover(); r != nil {
+			b.Error("TestPipeline panicked.")
+		}
+	}()
+
+	for i := 0; i < b.N; i++ {
+		pipe := newTestPipe(0)
+		results := make([]interface{}, 0)
+
+		err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		v, ok := pipe.Next()
+		if !ok {
+			b.Error("Pipe Next() problems.")
+		}
+		results = append(results, v)
+
+		flushed := pipe.WaitAndFlush()
+		results = append(results, flushed)
+
+		if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}); !isEqual {
+			b.Error("Results don't match!")
+		}
+
+		pipe.Close()
+	}
 }

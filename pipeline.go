@@ -10,7 +10,9 @@ type Pipeline interface {
 	Close()
 }
 
-type pipeline struct{}
+type pipeline struct {
+	itemsInPipeline int
+}
 
 // TODO IMPLEMENT
 func (p *pipeline) Execute(vals ...interface{}) error {
