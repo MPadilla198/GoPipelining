@@ -3,19 +3,28 @@ package PipinHot
 import "testing"
 
 func newTestPipe(n uint) Pipeline {
-	return NewPipelineBuilder().AddStage(func(n int) int { return n * n }, 2).AddStage(func(n int) int { return n * 2 }, n).Build()
+	b := NewPipelineBuilder()
+	b.AddStage(n, func(n int) int { return n * n })
+	b.AddStage(n, func(i int) int { return i * 2 })
+	return b.Build()
 }
 
 func simpleIntPipe() Pipeline {
-	return NewPipelineBuilder().AddStage(func(n int) int { return n * n }, 1).Build()
+	b := NewPipelineBuilder()
+	b.AddStage(1, func(n int) int { return n * n })
+	return b.Build()
 }
 
 func simpleStringPipe() Pipeline {
-	return NewPipelineBuilder().AddStage(func(n string) string { return n + "..." }, 1).Build()
+	b := NewPipelineBuilder()
+	b.AddStage(1, func(n string) string { return n + "..." })
+	return b.Build()
 }
 
 func simpleBoolPipe() Pipeline {
-	return NewPipelineBuilder().AddStage(func(n bool) bool { return !n }, 1).Build()
+	b := NewPipelineBuilder()
+	b.AddStage(1, func(n bool) bool { return !n })
+	return b.Build()
 }
 
 // Checks if array has the same values regardless of order
@@ -158,7 +167,7 @@ func TestPipeline_Flush(t *testing.T) {
 			t.Error("Error in execute in Flush Test.")
 		}
 
-		results := pipe.WaitAndFlush()
+		results := pipe.Flush()
 
 		if equal := softEqual(tCase.expectedOutput, results); !equal {
 			t.Error("Flush is messing up")
@@ -208,7 +217,7 @@ func TestPipeline(t *testing.T) {
 	}
 	results = append(results, v)
 
-	flushed := pipe.WaitAndFlush()
+	flushed := pipe.Flush()
 	results = append(results, flushed)
 
 	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
@@ -239,7 +248,7 @@ func TestAutoPipeline(t *testing.T) {
 	}
 	results = append(results, v)
 
-	flushed := pipe.WaitAndFlush()
+	flushed := pipe.Flush()
 	results = append(results, flushed)
 
 	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
@@ -270,7 +279,7 @@ func BenchmarkPipeline(b *testing.B) {
 		}
 		results = append(results, v)
 
-		flushed := pipe.WaitAndFlush()
+		flushed := pipe.Flush()
 		results = append(results, flushed)
 
 		if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}); !isEqual {
@@ -304,7 +313,7 @@ func BenchmarkAutoPipeline(b *testing.B) {
 		}
 		results = append(results, v)
 
-		flushed := pipe.WaitAndFlush()
+		flushed := pipe.Flush()
 		results = append(results, flushed)
 
 		if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}); !isEqual {

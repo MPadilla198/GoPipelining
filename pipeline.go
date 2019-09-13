@@ -5,7 +5,7 @@ import "errors"
 type Pipeline interface {
 	Execute(...interface{}) error
 	Next() (interface{}, bool)
-	WaitAndFlush() []interface{}
+	Flush() []interface{}
 	// pipeline panics if pipeline is used again after calling Close()
 	Close()
 }
@@ -25,8 +25,12 @@ func (p *pipeline) Next() (interface{}, bool) {
 }
 
 // TODO IMPLEMENT
-func (p *pipeline) WaitAndFlush() []interface{} {
+func (p *pipeline) Flush() []interface{} {
 	return []interface{}{}
+}
+
+// TODO IMPLEMENT
+func (p *pipeline) Wait() {
 }
 
 // TODO IMPLEMENT

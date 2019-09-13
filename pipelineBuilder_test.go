@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func assertAddStagePanic(t *testing.T, fn func(uint, Function) *builder, in Function, n uint, fnNum int, mustPanic bool) {
+func assertAddStagePanic(t *testing.T, fn func(uint, Function), in Function, n uint, fnNum int, mustPanic bool) {
 	defer func() {
 		if r := recover(); (r != nil) != mustPanic {
 			t.Errorf("AddStage method #%d did not pass.", fnNum)
@@ -20,7 +20,9 @@ var b2 PipelineBuilder
 
 func init() {
 	b = NewPipelineBuilder()
-	b2 = NewPipelineBuilder().AddStage(0, func(n int) int { return n + 1 }).AddStage(10, func(str string) bool { return str == "Hello, World!" })
+	b2 = NewPipelineBuilder()
+	b2.AddStage(0, func(n int) int { return n + 1 })
+	b2.AddStage(10, func(str string) bool { return str == "Hello, World!" })
 }
 
 func TestBuilder_AddStage(t *testing.T) {

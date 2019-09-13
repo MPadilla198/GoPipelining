@@ -9,7 +9,7 @@ var done = reflect.TypeOf(struct{}{})
 
 type PipelineBuilder interface {
 	Build() Pipeline
-	AddStage(uint, Function) *builder
+	AddStage(uint, Function)
 }
 
 type stage struct {
@@ -33,7 +33,7 @@ func (b *builder) Build() Pipeline {
 // AddStage expects fptr to be a pointer to a non-nil function
 // setNodeCnt sets an exact amount of nodes to be instantiated
 // If setNodeCnt is set to 0, the stage node cnt will be controlled automatically
-func (b *builder) AddStage(setNodeCnt uint, fptr Function) *builder {
+func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 	// BIG TODO needs to check that new stage matches with stage before it (params and returns)
 
 	// fptr is a pointer to a function.
@@ -85,5 +85,4 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) *builder {
 	})
 
 	b.stages = append(b.stages, stage{newStageFn, setNodeCnt == 0, setNodeCnt})
-	return b
 }
