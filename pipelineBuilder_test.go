@@ -22,7 +22,7 @@ func init() {
 	b = NewPipelineBuilder()
 	b2 = NewPipelineBuilder()
 	b2.AddStage(0, func(n int) int { return n + 1 })
-	b2.AddStage(10, func(str string) bool { return str == "Hello, World!" })
+	b2.AddStage(10, func(i int) bool { return i > 50 })
 }
 
 func TestBuilder_AddStage(t *testing.T) {
@@ -74,22 +74,33 @@ func TestBuilder(t *testing.T) {
 
 	nB := NewPipelineBuilder()
 
-	nB.AddStage(0, func(n int) int { return n + 1 })
+	nB.AddStage(0, func(n int) string {
+		if n > 100 {
+			return "Hello, World!"
+		}
+
+		return "Hello, Tiny Planet!"
+	})
 	nB.AddStage(20, func(str string) bool { return str == "Hello, World!" })
-	nB.AddStage(15, func(p struct {
+	nB.AddStage(15, func(b bool) (s struct {
 		n   int
 		str string
-	}) bool {
-		return p.n < 100 || p.str == "true"
+	}) {
+		if b {
+			s.n = 12
+			s.str = "Bye."
+		} else {
+			s.n = 4325982
+			s.str = "Bye bye."
+		}
+
+		return
 	})
-	nB.AddStage(9999, func(n int) struct {
-		high bool
-		low  bool
-	} {
-		return struct {
-			high bool
-			low  bool
-		}{n > 1000, n < 10}
+	nB.AddStage(9999, func(s struct {
+		n   int
+		str string
+	}) int {
+		return s.n
 	})
 
 	nB.Build()
@@ -99,22 +110,33 @@ func BenchmarkBuilder(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		nB := NewPipelineBuilder()
 
-		nB.AddStage(0, func(n int) int { return n + 1 })
+		nB.AddStage(0, func(n int) string {
+			if n > 100 {
+				return "Hello, World!"
+			}
+
+			return "Hello, Tiny Planet!"
+		})
 		nB.AddStage(20, func(str string) bool { return str == "Hello, World!" })
-		nB.AddStage(15, func(p struct {
+		nB.AddStage(15, func(b bool) (s struct {
 			n   int
 			str string
-		}) bool {
-			return p.n < 100 || p.str == "true"
+		}) {
+			if b {
+				s.n = 12
+				s.str = "Bye."
+			} else {
+				s.n = 4325982
+				s.str = "Bye bye."
+			}
+
+			return
 		})
-		nB.AddStage(9999, func(n int) struct {
-			high bool
-			low  bool
-		} {
-			return struct {
-				high bool
-				low  bool
-			}{n > 1000, n < 10}
+		nB.AddStage(9999, func(s struct {
+			n   int
+			str string
+		}) int {
+			return s.n
 		})
 
 		nB.Build()

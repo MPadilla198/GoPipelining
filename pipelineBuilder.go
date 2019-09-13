@@ -22,11 +22,12 @@ type stage struct {
 }
 
 type builder struct {
-	stages []stage
+	stages         []stage
+	lastOutputType reflect.Type
 }
 
 func NewPipelineBuilder() PipelineBuilder {
-	return &builder{stages: make([]stage, 0)}
+	return &builder{stages: make([]stage, 0), lastOutputType: nil}
 }
 
 func (b *builder) Build() Pipeline {
@@ -51,8 +52,8 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 	inType := fnParams.In(0)
 	outType := fnParams.Out(0)
 
-	if len(b.stages) > 0 {
-		if b.stages[len(b.stages)-1].outputType != inType {
+	if b.lastOutputType != nil {
+		if b.lastOutputType != inType {
 			panic("Stage's inputs don't match pipeline outputs")
 		}
 	}
@@ -92,4 +93,5 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 	})
 
 	b.stages = append(b.stages, stage{newStageFn, setNodeCnt == 0, setNodeCnt, inType, outType})
+	b.lastOutputType = outType
 }
