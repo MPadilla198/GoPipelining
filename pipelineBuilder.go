@@ -16,6 +16,9 @@ type stage struct {
 	fn      reflect.Value
 	isAuto  bool
 	nodeCnt uint
+
+	inputType  reflect.Type
+	outputType reflect.Type
 }
 
 type builder struct {
@@ -34,8 +37,6 @@ func (b *builder) Build() Pipeline {
 // setNodeCnt sets an exact amount of nodes to be instantiated
 // If setNodeCnt is set to 0, the stage node cnt will be controlled automatically
 func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
-	// BIG TODO needs to check that new stage matches with stage before it (params and returns)
-
 	// fptr is a pointer to a function.
 	fn := reflect.ValueOf(fptr)
 	fnParams := fn.Type()
@@ -49,6 +50,12 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 	// Param types
 	inType := fnParams.In(0)
 	outType := fnParams.Out(0)
+
+	if len(b.stages) > 0 {
+		if b.stages[len(b.stages)-1].outputType != inType {
+			panic("Stage's inputs don't match pipeline outputs")
+		}
+	}
 
 	// New Function Type made from function inputted
 	newFuncType := reflect.FuncOf(
@@ -84,5 +91,5 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 		return []reflect.Value{outChan}
 	})
 
-	b.stages = append(b.stages, stage{newStageFn, setNodeCnt == 0, setNodeCnt})
+	b.stages = append(b.stages, stage{newStageFn, setNodeCnt == 0, setNodeCnt, inType, outType})
 }
