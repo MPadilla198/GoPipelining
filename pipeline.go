@@ -1,6 +1,9 @@
 package PipinHot
 
-import "errors"
+import (
+	"errors"
+	"reflect"
+)
 
 type Pipeline interface {
 	Execute(...interface{}) error
@@ -11,7 +14,11 @@ type Pipeline interface {
 }
 
 type pipeline struct {
-	itemsInPipeline int
+	inChan  reflect.Value
+	outChan reflect.Value
+
+	stageDispatchers []stageDispatcher
+	itemsInPipeline  uint
 }
 
 // TODO IMPLEMENT
@@ -29,14 +36,16 @@ func (p *pipeline) Flush() []interface{} {
 	return []interface{}{}
 }
 
-// TODO IMPLEMENT
-func (p *pipeline) Wait() {
-}
-
-// TODO IMPLEMENT
 func (p *pipeline) Close() {
+	for _, s := range p.stageDispatchers {
+		s.Close()
+	}
+
+	// s.Close() closes all input channels
+	// closes last channel left
+	p.outChan.Close()
 }
 
-func newPipeline() Pipeline {
-	return &pipeline{}
+func newPipeline(in, out reflect.Value) Pipeline {
+	return &pipeline{in, out, make([]stageDispatcher, 0), 0}
 }

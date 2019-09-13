@@ -12,7 +12,7 @@ type PipelineBuilder interface {
 	AddStage(uint, Function)
 }
 
-type stage struct {
+type builderStage struct {
 	fn      reflect.Value
 	isAuto  bool
 	nodeCnt uint
@@ -22,21 +22,21 @@ type stage struct {
 }
 
 type builder struct {
-	stages         []stage
+	stages         []builderStage
 	lastOutputType reflect.Type
 }
 
 func NewPipelineBuilder() PipelineBuilder {
-	return &builder{stages: make([]stage, 0), lastOutputType: nil}
+	return &builder{stages: make([]builderStage, 0), lastOutputType: nil}
 }
 
 func (b *builder) Build() Pipeline {
-	return newPipeline()
+	return nil // newPipeline()
 }
 
 // AddStage expects fptr to be a pointer to a non-nil function
 // setNodeCnt sets an exact amount of nodes to be instantiated
-// If setNodeCnt is set to 0, the stage node cnt will be controlled automatically
+// If setNodeCnt is set to 0, the builderStage node cnt will be controlled automatically
 func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 	// fptr is a pointer to a function.
 	fn := reflect.ValueOf(fptr)
@@ -92,6 +92,6 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 		return []reflect.Value{outChan}
 	})
 
-	b.stages = append(b.stages, stage{newStageFn, setNodeCnt == 0, setNodeCnt, inType, outType})
+	b.stages = append(b.stages, builderStage{newStageFn, setNodeCnt == 0, setNodeCnt, inType, outType})
 	b.lastOutputType = outType
 }
