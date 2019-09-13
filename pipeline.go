@@ -13,6 +13,22 @@ type Pipeline interface {
 	Close()
 }
 
+func buildPipeline(stages []builderStage) Pipeline {
+	inChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stages[0].inputType), 0)
+	outChanType := stages[len(stages)-1].outputType
+	newPipeline := &pipeline{inChan, reflect.Zero(outChanType), make([]stageDispatcher, len(stages)), 0}
+
+	for i, stage := range stages {
+		newPipeline.stageDispatchers[i] = newStageDispatcher(stage)
+		inChan = newPipeline.stageDispatchers[i].Start(inChan)
+	}
+
+	// inChan at this point will be the final outChan from the last piece of the pipeline
+	newPipeline.outChan = inChan
+
+	return newPipeline
+}
+
 type pipeline struct {
 	inChan  reflect.Value
 	outChan reflect.Value
@@ -43,9 +59,5 @@ func (p *pipeline) Close() {
 
 	// s.Close() closes all input channels
 	// closes last channel left
-	p.outChan.Close()
-}
-
-func newPipeline(in, out reflect.Value) Pipeline {
-	return &pipeline{in, out, make([]stageDispatcher, 0), 0}
+	p.inChan.Close()
 }

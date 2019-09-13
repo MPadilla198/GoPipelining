@@ -15,11 +15,9 @@ func assertAddStagePanic(t *testing.T, fn func(uint, Function), in Function, n u
 	fn(n, in)
 }
 
-var b PipelineBuilder
 var b2 PipelineBuilder
 
 func init() {
-	b = NewPipelineBuilder()
 	b2 = NewPipelineBuilder()
 	b2.AddStage(0, func(n int) int { return n + 1 })
 	b2.AddStage(10, func(i int) bool { return i > 50 })
@@ -46,7 +44,9 @@ func TestBuilder_AddStage(t *testing.T) {
 		{func(n int) int { return n + 1 }, 0, false},
 		{func(str string) bool { return str == "Hello, World!" }, 10, false},
 	}
+
 	for i, tCase := range testCases {
+		b := NewPipelineBuilder()
 		assertAddStagePanic(t, b.AddStage, tCase.input, tCase.nodeCnt, i, tCase.mustPanic)
 	}
 }
@@ -54,7 +54,8 @@ func TestBuilder_AddStage(t *testing.T) {
 func TestBuilder_Build(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Errorf("Paincked during build")
+			t.Error("Panicked during build")
+			t.Error(r)
 		}
 	}()
 

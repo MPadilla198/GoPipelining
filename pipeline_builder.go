@@ -1,6 +1,8 @@
 package PipinHot
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // For a while it'll just use interface{}
 type Function interface{}
@@ -14,7 +16,6 @@ type PipelineBuilder interface {
 
 type builderStage struct {
 	fn      reflect.Value
-	isAuto  bool
 	nodeCnt uint
 
 	inputType  reflect.Type
@@ -31,7 +32,7 @@ func NewPipelineBuilder() PipelineBuilder {
 }
 
 func (b *builder) Build() Pipeline {
-	return nil // newPipeline()
+	return buildPipeline(b.stages)
 }
 
 // AddStage expects fptr to be a pointer to a non-nil function
@@ -60,38 +61,34 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 
 	// New Function Type made from function inputted
 	newFuncType := reflect.FuncOf(
-		[]reflect.Type{reflect.ChanOf(reflect.RecvDir, done), reflect.ChanOf(reflect.RecvDir, inType)},
-		[]reflect.Type{reflect.ChanOf(reflect.RecvDir, outType)},
+		[]reflect.Type{reflect.ChanOf(reflect.RecvDir, done), reflect.ChanOf(reflect.RecvDir, inType), reflect.ChanOf(reflect.SendDir, outType)},
+		[]reflect.Type{},
 		false)
 
 	newStageFn := reflect.MakeFunc(newFuncType, func(in []reflect.Value) []reflect.Value {
-		doneChan := in[0]
-		inChan := in[1]
-		outChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, outType), 0)
-
-		go func(newOut reflect.Value) {
-			defer newOut.Close()
+		go func(doneChan, inChan, outChan reflect.Value) {
+			defer outChan.Close()
 
 			for {
 				// Select from input of channels: in and done
 				chosen, recv, _ := reflect.Select([]reflect.SelectCase{
-					{reflect.SelectRecv, inChan, reflect.ValueOf(0)},
-					{reflect.SelectRecv, doneChan, reflect.ValueOf(0)},
+					{Dir: reflect.SelectRecv, Chan: inChan},
+					{Dir: reflect.SelectRecv, Chan: doneChan},
 				})
 				switch chosen {
 				case 0: // Something comes in the channel
 					// Call fptr with input from in-channel as param
 					// And send it through the output channel
-					newOut.Send(fn.Call([]reflect.Value{recv})[0])
+					outChan.Send(fn.Call([]reflect.Value{recv})[0])
 				case 1: // Done channel
 					return
 				}
 			}
-		}(outChan)
+		}(in[0], in[1], in[2])
 
-		return []reflect.Value{outChan}
+		return nil
 	})
 
-	b.stages = append(b.stages, builderStage{newStageFn, setNodeCnt == 0, setNodeCnt, inType, outType})
+	b.stages = append(b.stages, builderStage{newStageFn, setNodeCnt, inType, outType})
 	b.lastOutputType = outType
 }
