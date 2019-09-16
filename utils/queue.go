@@ -6,13 +6,14 @@ import (
 
 type Queue interface {
 	Push(interface{})
-	Pop() interface{}
+	Pop() (interface{}, bool)
 	Size() int
 	List() []interface{}
+	Clear()
 }
 
 func NewQueue() Queue {
-	return nil
+	return newLinkedList()
 }
 
 type node struct {
@@ -23,25 +24,79 @@ type node struct {
 type linkedList struct {
 	head *node
 	tail *node
-
 	size int
 
 	mux      sync.Mutex
 	nodePool sync.Pool
 }
 
-func (ll *linkedList) Push(val interface{}) {
+func newLinkedList() *linkedList {
+	nodePool := sync.Pool{
+		New: func() interface{} {
+			return &node{nil, nil}
+		},
+	}
 
+	return &linkedList{nil, nil, 0, sync.Mutex{}, nodePool}
 }
 
-func (ll *linkedList) Pop() interface{} {
-	return nil
+func (ll *linkedList) Push(val interface{}) {
+	newNode := ll.nodePool.Get().(*node)
+	newNode.value = val
+
+	ll.mux.Lock()
+	defer ll.mux.Unlock()
+
+	if ll.size == 0 {
+		ll.head = newNode
+		ll.tail = newNode
+	} else {
+		ll.tail.next = newNode
+		ll.tail = ll.tail.next
+	}
+
+	ll.size++
+}
+
+func (ll *linkedList) Pop() (interface{}, bool) {
+	ll.mux.Lock()
+	defer ll.mux.Unlock()
+
+	if ll.size == 0 {
+		return nil, false
+	}
+
+	val := ll.head.value
+
+	ll.head = ll.head.next
+
+	return val, true
 }
 
 func (ll *linkedList) Size() int {
-	return 0
+	return ll.size
 }
 
 func (ll *linkedList) List() []interface{} {
-	return []interface{}{}
+	list := make([]interface{}, ll.size)
+
+	ll.mux.Lock()
+	defer ll.mux.Unlock()
+
+	node := ll.head
+	for i := 0; node != nil; i++ {
+		list[i] = node
+		node = node.next
+	}
+
+	return list
+}
+
+func (ll *linkedList) Clear() {
+	ll.mux.Lock()
+	defer ll.mux.Unlock()
+
+	ll.head = nil
+	ll.tail = nil
+	ll.size = 0
 }
