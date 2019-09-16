@@ -66,8 +66,9 @@ func TestPipeline_Execute(t *testing.T) {
 	defer intPipe.Close()
 
 	for _, tCase := range intTestCases {
-		if err := intPipe.Execute(tCase.input); (err != nil) != tCase.errorExpected {
+		if err := intPipe.Execute(tCase.input...); (err != nil) != tCase.errorExpected {
 			t.Error("Execute is giving errors for ints.")
+			return
 		}
 	}
 
@@ -85,8 +86,9 @@ func TestPipeline_Execute(t *testing.T) {
 	defer strPipe.Close()
 
 	for _, tCase := range strTestCases {
-		if err := strPipe.Execute(tCase.input); (err != nil) != tCase.errorExpected {
+		if err := strPipe.Execute(tCase.input...); (err != nil) != tCase.errorExpected {
 			t.Error("Execute is giving errors for strings")
+			return
 		}
 	}
 
@@ -105,8 +107,9 @@ func TestPipeline_Execute(t *testing.T) {
 	defer boolPipe.Close()
 
 	for _, tCase := range boolTestCases {
-		if err := boolPipe.Execute(tCase.input); (err != nil) != tCase.errorExpected {
+		if err := boolPipe.Execute(tCase.input...); (err != nil) != tCase.errorExpected {
 			t.Error("Execute is giving errors for bools.")
+			return
 		}
 	}
 }

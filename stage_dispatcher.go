@@ -1,6 +1,9 @@
 package PipinHot
 
-import "reflect"
+import (
+	"github.com/MPadilla198/PipinHot/utils"
+	"reflect"
+)
 
 type stageDispatcher interface {
 	Start(inChan reflect.Value) (outChan reflect.Value)
@@ -42,8 +45,8 @@ func (man *manualStageDispatcher) Start(inChan reflect.Value) reflect.Value {
 }
 
 func (man *manualStageDispatcher) Close() {
-	man.outChan.Close()
 	man.doneChan.Close()
+	man.outChan.Close()
 }
 
 type automaticStageDispatcher struct {
@@ -53,7 +56,7 @@ type automaticStageDispatcher struct {
 	fn reflect.Value
 
 	doneChan    reflect.Value
-	currNodeCnt uint
+	nodeCounter utils.Counter
 }
 
 func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value {
@@ -68,6 +71,6 @@ func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value 
 }
 
 func (auto *automaticStageDispatcher) Close() {
-	auto.outChan.Close()
 	auto.doneChan.Close()
+	auto.outChan.Close()
 }

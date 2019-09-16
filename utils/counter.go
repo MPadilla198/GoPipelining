@@ -1,4 +1,4 @@
-package PipinHot
+package utils
 
 import "sync/atomic"
 
@@ -8,16 +8,16 @@ in automatic stage dispatchers
 
 Don't think there'll be more goroutines than 2^32
 */
-type counter int32
+type Counter int32
 
-func (c *counter) increment() int32 {
+func (c *Counter) Increment() int32 {
 	return atomic.AddInt32((*int32)(c), 1)
 }
 
-func (c *counter) decrement() int32 {
+func (c *Counter) Decrement() int32 {
 	return atomic.AddInt32((*int32)(c), -1)
 }
 
-func (c *counter) get() int32 {
+func (c *Counter) Get() int32 {
 	return atomic.LoadInt32((*int32)(c))
 }
