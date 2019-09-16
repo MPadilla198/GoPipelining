@@ -2,7 +2,7 @@ package utils
 
 import "testing"
 
-func TestQueue_Push(t *testing.T) {
+func TestQueue_Queue(t *testing.T) {
 
 }
 

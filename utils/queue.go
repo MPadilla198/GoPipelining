@@ -5,7 +5,7 @@ import (
 )
 
 type Queue interface {
-	Push(interface{})
+	Queue(interface{})
 	Pop() (interface{}, bool)
 	Size() int
 	List() []interface{}
@@ -40,7 +40,7 @@ func newLinkedList() *linkedList {
 	return &linkedList{nil, nil, 0, sync.Mutex{}, nodePool}
 }
 
-func (ll *linkedList) Push(val interface{}) {
+func (ll *linkedList) Queue(val interface{}) {
 	newNode := ll.nodePool.Get().(*node)
 	newNode.value = val
 

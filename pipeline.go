@@ -21,7 +21,7 @@ func buildPipeline(stages []builderStage) Pipeline {
 	inType := stages[0].inputType
 	inChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, inType), 0)
 	outChanType := stages[len(stages)-1].outputType
-	newPipeline := &pipeline{inType, inChan, reflect.Zero(outChanType), reflect.MakeChan(reflect.ChanOf(reflect.BothDir, done), 0), sync.WaitGroup{}, make([]stageDispatcher, len(stages)), 0, make([]interface{}, 0)}
+	newPipeline := &pipeline{inType, inChan, reflect.Zero(outChanType), reflect.MakeChan(reflect.ChanOf(reflect.BothDir, done), 0), sync.WaitGroup{}, make([]stageDispatcher, len(stages)), 0, utils.NewQueue()}
 
 	for i, stage := range stages {
 		newPipeline.stageDispatchers[i] = newStageDispatcher(stage)
@@ -36,21 +36,29 @@ func buildPipeline(stages []builderStage) Pipeline {
 	return newPipeline
 }
 
+// THIS PIPELINE IS NOT THREAD SAFE, TO BE USED ONLY IN MAIN THREAD/ONE GOROUTINE
 type pipeline struct {
+	// This is the type for the input channel
 	inputType reflect.Type
 
+	// The channels for going into and coming out of the pipeline
 	inChan  reflect.Value
 	outChan reflect.Value
 
+	// The done channel, close this when all components of pipeline are closed to finish closing last of pipeline
 	endPipeline reflect.Value
 
+	// TODO NOT SURE YET IF I EVEN NEED THIS JUST KEEPING IT IN CASE
 	wg sync.WaitGroup
 
+	// Dispatchers control # of nodes in a stage, just need to be started to open up pipeline
 	stageDispatchers []stageDispatcher
-	itemsInPipeline  utils.Counter
+	// Counters the amount of items IN THE PIPELINE CURRENTLY
+	// As soon as items come out of outChan decrement counter
+	itemsInPipeline utils.Counter
 
-	// TODO Change to different data structure that is more suitable
-	values []interface{}
+	// Stores values coming out of pipeline
+	values utils.Queue
 }
 
 func (p *pipeline) start() {
@@ -62,7 +70,9 @@ func (p *pipeline) start() {
 			})
 			switch chosen {
 			case 0:
-				p.values = append(p.values, []interface{}{recv.Interface()})
+				p.values.Queue(recv.Interface())
+				p.itemsInPipeline.Decrement()
+				p.wg.Done()
 			case 1:
 				return
 			}
@@ -83,6 +93,8 @@ func (p *pipeline) Execute(vals ...interface{}) error {
 		p.itemsInPipeline.Increment()
 	}
 
+	p.wg.Add(len(vals))
+
 	return nil
 }
 
@@ -93,17 +105,24 @@ func (p *pipeline) Next() (interface{}, bool) {
 
 // TODO IMPLEMENT
 func (p *pipeline) Flush() []interface{} {
-	return []interface{}{}
+	p.wg.Wait()
+
+	list := p.values.List()
+	p.values.Clear()
+
+	return list
 }
 
 func (p *pipeline) Close() {
+	// s.Close() closes all input channels
+	// closes in channel so no new
+	p.inChan.Close()
+
+	// Close all dispatchers
 	for _, s := range p.stageDispatchers {
 		s.Close()
 	}
 
-	// s.Close() closes all input channels
-	// closes last channel left
-	p.inChan.Close()
-
+	// Finally, close pipeline
 	p.endPipeline.Close()
 }
