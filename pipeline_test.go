@@ -4,7 +4,7 @@ import "testing"
 
 func newTestPipe(n uint) Pipeline {
 	b := NewPipelineBuilder()
-	b.AddStage(n, func(n int) int { return n * n })
+	b.AddStage(n, func(i int) int { return i * i })
 	b.AddStage(n, func(i int) int { return i * 2 })
 	return b.Build()
 }
@@ -29,22 +29,22 @@ func simpleBoolPipe() Pipeline {
 
 // Checks if array has the same values regardless of order
 func softEqual(a []interface{}, b []interface{}) bool {
-	newA := make([]interface{}, len(a))
-	newB := make([]interface{}, len(b))
-
-	copy(newA, a)
-	copy(newB, b)
-
-loop:
-	for _, nA := range newA {
-		for i, nB := range newB {
-			if nA == nB {
-				newB = append(newB[:i], newB[i+1:])
-				continue loop
-			}
-		}
-
+	if len(a) != len(b) {
 		return false
+	}
+
+	mapA := make(map[interface{}]int)
+	mapB := make(map[interface{}]int)
+
+	for i, _ := range a {
+		mapA[a[i]]++
+		mapB[b[i]]++
+	}
+
+	for k, v := range mapA {
+		if v != mapB[k] {
+			return false
+		}
 	}
 
 	return true
@@ -133,7 +133,7 @@ func TestPipeline_Next(t *testing.T) {
 	defer pipe.Close()
 
 	for i, tCase := range testCases {
-		err := pipe.Execute(tCase.input...)
+		err := pipe.Execute(tCase.input[i])
 
 		if err != nil {
 			t.Error(err)
@@ -141,7 +141,7 @@ func TestPipeline_Next(t *testing.T) {
 
 		if val, ok := pipe.Next(); ok {
 			if iVal, ok := val.(int); !ok || iVal != tCase.expectedValue[i] {
-				t.Error("Error: Incorrect value received from pipeline.")
+				t.Errorf("Error: Incorrect value received from pipeline. %t %d != %d", ok, iVal, tCase.expectedValue[i])
 			}
 		} else {
 			t.Error("Error: No value received")
@@ -164,7 +164,7 @@ func TestPipeline_Flush(t *testing.T) {
 	defer pipe.Close()
 
 	for _, tCase := range testCases {
-		err := pipe.Execute(tCase.input)
+		err := pipe.Execute(tCase.input...)
 
 		if err != nil {
 			t.Error("Error in execute in Flush Test.")
@@ -173,7 +173,7 @@ func TestPipeline_Flush(t *testing.T) {
 		results := pipe.Flush()
 
 		if equal := softEqual(tCase.expectedOutput, results); !equal {
-			t.Error("Flush is messing up")
+			t.Errorf("Flush is messing up: %p != %p", tCase.expectedOutput, results)
 		}
 	}
 }
@@ -199,7 +199,7 @@ func TestPipeline_Close(t *testing.T) {
 func TestPipeline(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Error("TestPipeline panicked.")
+			t.Errorf("TestPipeline panicked: %s", r)
 		}
 	}()
 
@@ -235,6 +235,7 @@ func TestAutoPipeline(t *testing.T) {
 		}
 	}()
 
+	// TODO line below needs to be non-zero or else test go horribly wrong
 	pipe := newTestPipe(1)
 	defer pipe.Close()
 	results := make([]interface{}, 0)

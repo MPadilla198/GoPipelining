@@ -46,7 +46,6 @@ func (man *manualStageDispatcher) Start(inChan reflect.Value) reflect.Value {
 
 func (man *manualStageDispatcher) Close() {
 	man.doneChan.Close()
-	man.outChan.Close()
 }
 
 type automaticStageDispatcher struct {
@@ -72,5 +71,4 @@ func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value 
 
 func (auto *automaticStageDispatcher) Close() {
 	auto.doneChan.Close()
-	auto.outChan.Close()
 }
