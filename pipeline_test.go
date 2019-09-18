@@ -234,16 +234,20 @@ func TestPipeline(t *testing.T) {
 func TestAutoPipeline(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Error("TestPipeline panicked.")
+			t.Errorf("TestPipeline panicked: %s", r)
 		}
 	}()
 
 	// TODO line below needs to be non-zero or else test go horribly wrong
 	pipe := newTestPipe(1)
 	defer pipe.Close()
-	results := make([]interface{}, 0)
 
-	err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}
+
+	results := make([]interface{}, 0, len(input))
+
+	err := pipe.Execute(input...)
 	if err != nil {
 		t.Error(err)
 		return
@@ -256,10 +260,10 @@ func TestAutoPipeline(t *testing.T) {
 	results = append(results, v)
 
 	flushed := pipe.Flush()
-	results = append(results, flushed)
+	results = append(results, flushed...)
 
-	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
-		t.Error("Results don't match!")
+	if isEqual := softEqual(results, expectedResults); !isEqual {
+		t.Errorf("Results don't match: %v != %v", results, expectedResults)
 	}
 }
 
@@ -272,9 +276,12 @@ func BenchmarkPipeline(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		pipe := newTestPipe(1)
-		results := make([]interface{}, 1)
 
-		err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+		input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+		expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}
+		results := make([]interface{}, 0, len(input))
+
+		err := pipe.Execute(input...)
 		if err != nil {
 			b.Error(err)
 			return
@@ -287,10 +294,10 @@ func BenchmarkPipeline(b *testing.B) {
 		results = append(results, v)
 
 		flushed := pipe.Flush()
-		results = append(results, flushed)
+		results = append(results, flushed...)
 
-		if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}); !isEqual {
-			b.Error("Results don't match!")
+		if isEqual := softEqual(results, expectedResults); !isEqual {
+			b.Errorf("Results don't match: %v != %v", results, expectedResults)
 		}
 
 		pipe.Close()

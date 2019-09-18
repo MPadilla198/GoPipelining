@@ -61,7 +61,7 @@ type automaticStageDispatcher struct {
 func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value {
 	auto.inChan = inChan
 
-	// TODO IMPLEMENT
+	// TODO IMPLEMENT -
 	go func() {
 
 	}()
