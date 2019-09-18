@@ -239,7 +239,7 @@ func TestAutoPipeline(t *testing.T) {
 	}()
 
 	// TODO line below needs to be non-zero or else test go horribly wrong
-	pipe := newTestPipe(1)
+	pipe := newTestPipe(0)
 	defer pipe.Close()
 
 	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}

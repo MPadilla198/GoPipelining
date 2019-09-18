@@ -152,9 +152,9 @@ func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value 
 					go auto.newWorker()
 
 					auto.nodeCounter.Increment()
-				} else {
-					auto.intoFnChan.Send(recv)
 				}
+
+				auto.intoFnChan.Send(recv)
 			case 1:
 				return
 			}
