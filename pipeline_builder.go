@@ -59,36 +59,6 @@ func (b *builder) AddStage(setNodeCnt uint, fptr Function) {
 		}
 	}
 
-	// New Function Type made from function inputted
-	newFuncType := reflect.FuncOf(
-		[]reflect.Type{reflect.ChanOf(reflect.RecvDir, done), reflect.ChanOf(reflect.RecvDir, inType), reflect.ChanOf(reflect.SendDir, outType)},
-		[]reflect.Type{},
-		false)
-
-	newStageFn := reflect.MakeFunc(newFuncType, func(in []reflect.Value) []reflect.Value {
-		go func(doneChan, inChan, outChan reflect.Value) {
-			defer outChan.Close()
-
-			for {
-				// Select from input of channels: in and done
-				chosen, recv, _ := reflect.Select([]reflect.SelectCase{
-					{Dir: reflect.SelectRecv, Chan: inChan},
-					{Dir: reflect.SelectRecv, Chan: doneChan},
-				})
-				switch chosen {
-				case 0: // Something comes in the channel
-					// Call fptr with input from in-channel as param
-					// And send it through the output channel
-					outChan.Send(fn.Call([]reflect.Value{recv})[0])
-				case 1: // Done channel
-					return
-				}
-			}
-		}(in[0], in[1], in[2])
-
-		return nil
-	})
-
-	b.stages = append(b.stages, builderStage{newStageFn, setNodeCnt, inType, outType})
+	b.stages = append(b.stages, builderStage{fn, setNodeCnt, inType, outType})
 	b.lastOutputType = outType
 }

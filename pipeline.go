@@ -51,9 +51,6 @@ type pipeline struct {
 	// The done channel, close this when all components of pipeline are closed to finish closing last of pipeline
 	endPipeline reflect.Value
 
-	// TODO find possible way to combine functionality of wg and itemsInPipeline
-	// wg sync.WaitGroup
-
 	// Dispatchers control # of nodes in a stage, just need to be started to open up pipeline
 	stageDispatchers []stageDispatcher
 	// Counters the amount of items IN THE PIPELINE CURRENTLY
