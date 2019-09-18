@@ -36,8 +36,8 @@ func softEqual(a []interface{}, b []interface{}) bool {
 	mapA := make(map[interface{}]int)
 	mapB := make(map[interface{}]int)
 
-	for i, _ := range a {
-		mapA[a[i]]++
+	for i, aVal := range a {
+		mapA[aVal]++
 		mapB[b[i]]++
 	}
 
@@ -173,7 +173,7 @@ func TestPipeline_Flush(t *testing.T) {
 		results := pipe.Flush()
 
 		if equal := softEqual(tCase.expectedOutput, results); !equal {
-			t.Errorf("Flush is messing up: %p != %p", tCase.expectedOutput, results)
+			t.Errorf("Flush is messing up: %v != %v", tCase.expectedOutput, results)
 		}
 	}
 }
@@ -206,9 +206,12 @@ func TestPipeline(t *testing.T) {
 	pipe := newTestPipe(1)
 	defer pipe.Close()
 
-	results := make([]interface{}, 0)
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}
 
-	err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	results := make([]interface{}, 0, len(input))
+
+	err := pipe.Execute(input...)
 	if err != nil {
 		t.Error(err)
 		return
@@ -221,10 +224,10 @@ func TestPipeline(t *testing.T) {
 	results = append(results, v)
 
 	flushed := pipe.Flush()
-	results = append(results, flushed)
+	results = append(results, flushed...)
 
-	if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}); !isEqual {
-		t.Error("Results don't match!")
+	if isEqual := softEqual(results, expectedResults); !isEqual {
+		t.Errorf("Results don't match: %v != %v", results, expectedResults)
 	}
 }
 

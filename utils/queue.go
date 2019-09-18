@@ -75,6 +75,8 @@ func (ll *linkedList) Pop() (interface{}, bool) {
 	oldHead.value = nil
 	ll.nodePool.Put(oldHead)
 
+	ll.size--
+
 	return val, true
 }
 
@@ -90,7 +92,7 @@ func (ll *linkedList) List() []interface{} {
 
 	node := ll.head
 	for i := 0; node != nil; i++ {
-		list[i] = node
+		list[i] = node.value
 		node = node.next
 	}
 
