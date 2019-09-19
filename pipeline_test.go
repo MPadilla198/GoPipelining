@@ -240,7 +240,6 @@ func TestAutoPipeline(t *testing.T) {
 		}
 	}()
 
-	// TODO line below needs to be non-zero or else test go horribly wrong
 	pipe := newTestPipe(0)
 	defer pipe.Close()
 

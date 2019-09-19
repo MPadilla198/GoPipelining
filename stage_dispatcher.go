@@ -7,16 +7,17 @@ import (
 )
 
 type stageDispatcher interface {
+	callFunc(value reflect.Value)
 	Start(inChan reflect.Value) (outChan reflect.Value)
 	newWorker()
 	Close()
 }
 
 func newStageDispatcher(stage builderStage) stageDispatcher {
-	// TODO Find optimal buffer size for out chan
-	doneChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, done), 0)
-	inChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stage.inputType), 0)
-	outChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stage.outputType), 0)
+	// TODO Find optimal buffer size for out chan, doing this for now
+	doneChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, done), int(stage.nodeCnt))
+	inChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stage.inputType), int(stage.nodeCnt))
+	outChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stage.outputType), int(stage.nodeCnt))
 
 	if stage.nodeCnt == 0 {
 		intoFnChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stage.inputType), 0)
@@ -37,7 +38,7 @@ type manualStageDispatcher struct {
 	nodeCnt  uint
 }
 
-func (man *manualStageDispatcher) sendVal(recv reflect.Value) {
+func (man *manualStageDispatcher) callFunc(recv reflect.Value) {
 	toSend := man.fn.Call([]reflect.Value{recv})[0]
 
 	// Meant to end the race condition of sending over a channel that could potentially be closed
@@ -64,7 +65,7 @@ func (man *manualStageDispatcher) newWorker() {
 		case 0: // Something comes in the channel
 			// Call fptr with input from in-channel as param
 			// And send it through the output channel
-			man.sendVal(recv)
+			man.callFunc(recv)
 		case 1: // Done channel
 			return
 		}
@@ -72,7 +73,6 @@ func (man *manualStageDispatcher) newWorker() {
 }
 
 func (man *manualStageDispatcher) Start(inChan reflect.Value) reflect.Value {
-	// TODO Find optimal buffer size for out chan
 	man.inChan = inChan
 
 	for i := uint(0); i < man.nodeCnt; i++ {
@@ -99,7 +99,7 @@ type automaticStageDispatcher struct {
 	itemInStage utils.Counter
 }
 
-func (auto *automaticStageDispatcher) sendVal(recv reflect.Value) {
+func (auto *automaticStageDispatcher) callFunc(recv reflect.Value) {
 	toSend := auto.fn.Call([]reflect.Value{recv})[0]
 
 	chosen, _, _ := reflect.Select([]reflect.SelectCase{
@@ -126,7 +126,7 @@ func (auto *automaticStageDispatcher) newWorker() {
 		switch chosen {
 		// New value comes in
 		case 0:
-			auto.sendVal(recv)
+			auto.callFunc(recv)
 			auto.itemInStage.Decrement()
 		// Timer goes off and worker shuts down, or done chan ends goroutine
 		case 1, 2:
@@ -139,7 +139,6 @@ func (auto *automaticStageDispatcher) newWorker() {
 func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value {
 	auto.inChan = inChan
 
-	// TODO IMPLEMENT
 	// This goroutine will be in control of the amount of workers in the stage
 	go func() {
 		for {
