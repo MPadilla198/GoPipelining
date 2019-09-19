@@ -1,7 +1,6 @@
 package PipinHot
 
 import (
-	"fmt"
 	"github.com/MPadilla198/PipinHot/utils"
 	"reflect"
 	"time"
@@ -38,20 +37,23 @@ type manualStageDispatcher struct {
 	nodeCnt  uint
 }
 
+func (man *manualStageDispatcher) sendVal(recv reflect.Value) {
+	toSend := man.fn.Call([]reflect.Value{recv})[0]
+
+	// Meant to end the race condition of sending over a channel that could potentially be closed
+	chosen, _, _ := reflect.Select([]reflect.SelectCase{
+		{Dir: reflect.SelectRecv, Chan: man.doneChan},
+		{Dir: reflect.SelectDefault},
+	})
+	switch chosen {
+	case 0:
+		return
+	case 1:
+		man.outChan.Send(toSend)
+	}
+}
+
 func (man *manualStageDispatcher) newWorker() {
-	defer func() {
-		if r, ok := recover().(string); ok {
-			// Catch just this panic, otherwise keep going
-			// TODO figure out why this panic is being set of when pipeline.Next() is called
-			if r == "send on closed channel" {
-				fmt.Println("recovered: send on closed channel")
-				return
-			}
-
-			panic(r)
-		}
-	}()
-
 	for {
 		// Select from input of channels: in and done
 		chosen, recv, _ := reflect.Select([]reflect.SelectCase{
@@ -62,7 +64,7 @@ func (man *manualStageDispatcher) newWorker() {
 		case 0: // Something comes in the channel
 			// Call fptr with input from in-channel as param
 			// And send it through the output channel
-			man.outChan.Send(man.fn.Call([]reflect.Value{recv})[0])
+			man.sendVal(recv)
 		case 1: // Done channel
 			return
 		}
@@ -97,20 +99,22 @@ type automaticStageDispatcher struct {
 	itemInStage utils.Counter
 }
 
+func (auto *automaticStageDispatcher) sendVal(recv reflect.Value) {
+	toSend := auto.fn.Call([]reflect.Value{recv})[0]
+
+	chosen, _, _ := reflect.Select([]reflect.SelectCase{
+		{Dir: reflect.SelectRecv, Chan: auto.doneChan},
+		{Dir: reflect.SelectDefault},
+	})
+	switch chosen {
+	case 0:
+		return
+	case 1:
+		auto.outChan.Send(toSend)
+	}
+}
+
 func (auto *automaticStageDispatcher) newWorker() {
-	defer func() {
-		if r, ok := recover().(string); ok {
-			// Catch just this panic, otherwise keep going
-			// TODO figure out why this panic is being set of when pipeline.Next() is called
-			if r == "send on closed channel" {
-				fmt.Println("recovered: send on closed channel")
-				return
-			}
-
-			panic(r)
-		}
-	}()
-
 	for {
 		chosen, recv, _ := reflect.Select([]reflect.SelectCase{
 			{Dir: reflect.SelectRecv, Chan: auto.intoFnChan},
@@ -122,7 +126,7 @@ func (auto *automaticStageDispatcher) newWorker() {
 		switch chosen {
 		// New value comes in
 		case 0:
-			auto.outChan.Send(auto.fn.Call([]reflect.Value{recv})[0])
+			auto.sendVal(recv)
 			auto.itemInStage.Decrement()
 		// Timer goes off and worker shuts down, or done chan ends goroutine
 		case 1, 2:
