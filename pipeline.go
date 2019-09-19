@@ -76,8 +76,8 @@ func (p *pipeline) start() {
 			switch chosen {
 			case 0:
 				if p.waitingForNext {
-					p.nextChan <- recv.Interface()
 					p.waitingForNext = false
+					p.nextChan <- recv.Interface()
 				} else {
 					p.values.Queue(recv.Interface())
 				}
@@ -94,7 +94,7 @@ func (p *pipeline) Execute(vals ...interface{}) error {
 	// First needs to check that vals are the same type as input
 	for _, val := range vals {
 		if reflect.TypeOf(val) != p.inputType {
-			return errors.New("")
+			return errors.New("wrong input value")
 		}
 	}
 

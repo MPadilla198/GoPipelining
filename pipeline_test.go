@@ -132,19 +132,21 @@ func TestPipeline_Next(t *testing.T) {
 	pipe := newTestPipe(1)
 	defer pipe.Close()
 
-	for i, tCase := range testCases {
-		err := pipe.Execute(tCase.input[i])
+	for _, tCase := range testCases {
+		err := pipe.Execute(tCase.input...)
 
 		if err != nil {
 			t.Error(err)
 		}
 
-		if val, ok := pipe.Next(); ok {
-			if iVal, ok := val.(int); !ok || iVal != tCase.expectedValue[i] {
-				t.Errorf("Error: Incorrect value received from pipeline. %t %d != %d", ok, iVal, tCase.expectedValue[i])
+		for _, expResult := range tCase.expectedValue {
+			if val, ok := pipe.Next(); ok {
+				if iVal, ok := val.(int); !ok || iVal != expResult {
+					t.Errorf("Error: Incorrect value received from pipeline. %t %d != %d", ok, iVal, expResult)
+				}
+			} else {
+				t.Error("Error: No value received")
 			}
-		} else {
-			t.Error("Error: No value received")
 		}
 	}
 }
