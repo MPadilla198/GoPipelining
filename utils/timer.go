@@ -8,17 +8,17 @@ import (
 
 type Timer interface {
 	Start() func()
-	Av() float64
-	Std(float64) float64
+	Av() time.Duration
+	Std(float64) time.Duration
 }
 
-func NewTimer(sampleSize int, avPlaceholder, stdPlaceholder float64) Timer {
+func NewTimer(sampleSize int, placeholder time.Duration) Timer {
 	return &timer{
 		sampleSize: sampleSize,
 		times:      newTimes(sampleSize),
 		mux:        sync.RWMutex{},
-		av:         avPlaceholder,
-		std:        stdPlaceholder,
+		av:         int64(placeholder),
+		std:        int64(placeholder),
 	}
 }
 
@@ -28,8 +28,8 @@ type timer struct {
 	times *times
 
 	mux sync.RWMutex
-	av  float64
-	std float64
+	av  int64
+	std int64
 }
 
 func (t *timer) Start() (end func()) {
@@ -42,11 +42,11 @@ func (t *timer) Start() (end func()) {
 
 		if recalculate {
 			go func() {
-				newAv := float64(totalTime) / float64(t.sampleSize)
+				newAv := totalTime / int64(t.sampleSize)
 
 				var variation float64
 				for _, v := range times {
-					variation += math.Pow(float64(v)-newAv, 2)
+					variation += math.Pow(float64(v-newAv), 2)
 				}
 
 				variation /= float64(t.sampleSize)
@@ -57,7 +57,7 @@ func (t *timer) Start() (end func()) {
 				defer t.mux.Unlock()
 
 				t.av = newAv
-				t.std = newStd
+				t.std = int64(newStd)
 			}()
 		}
 	}
@@ -67,18 +67,18 @@ func (t *timer) Start() (end func()) {
 	return
 }
 
-func (t *timer) Av() float64 {
+func (t *timer) Av() time.Duration {
 	t.mux.RLock()
 	defer t.mux.RUnlock()
 
-	return t.av
+	return time.Duration(t.av)
 }
 
-func (t *timer) Std(n float64) float64 {
+func (t *timer) Std(n float64) time.Duration {
 	t.mux.RLock()
 	defer t.mux.RUnlock()
 
-	return t.std
+	return time.Duration(t.av + int64(float64(t.std)*n))
 }
 
 type times struct {

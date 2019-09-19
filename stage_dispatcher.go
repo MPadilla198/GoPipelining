@@ -22,7 +22,16 @@ func newStageDispatcher(stage builderStage) stageDispatcher {
 	if stage.nodeCnt == 0 {
 		intoFnChan := reflect.MakeChan(reflect.ChanOf(reflect.BothDir, stage.inputType), 0)
 
-		return &automaticStageDispatcher{inChan, outChan, intoFnChan, stage.fn, doneChan, 0, 0}
+		return &automaticStageDispatcher{
+			inChan:      inChan,
+			outChan:     outChan,
+			intoFnChan:  intoFnChan,
+			fn:          stage.fn,
+			timer:       utils.NewTimer(20, 1*time.Second),
+			doneChan:    doneChan,
+			nodeCounter: 0,
+			itemInStage: 0,
+		}
 	}
 	return &manualStageDispatcher{inChan, outChan, stage.fn, doneChan, stage.nodeCnt}
 }
@@ -93,6 +102,8 @@ type automaticStageDispatcher struct {
 
 	intoFnChan reflect.Value
 	fn         reflect.Value
+
+	timer utils.Timer
 
 	doneChan    reflect.Value
 	nodeCounter utils.Counter
