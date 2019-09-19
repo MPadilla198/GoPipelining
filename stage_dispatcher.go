@@ -27,7 +27,7 @@ func newStageDispatcher(stage builderStage) stageDispatcher {
 			outChan:     outChan,
 			intoFnChan:  intoFnChan,
 			fn:          stage.fn,
-			timer:       utils.NewTimer(20, 1*time.Second),
+			timer:       utils.NewTimer(10, 1*time.Second),
 			doneChan:    doneChan,
 			nodeCounter: 0,
 			itemInStage: 0,
@@ -129,16 +129,17 @@ func (auto *automaticStageDispatcher) newWorker() {
 	for {
 		chosen, recv, _ := reflect.Select([]reflect.SelectCase{
 			{Dir: reflect.SelectRecv, Chan: auto.intoFnChan},
-			// TODO Change next line to be more dynamic timer (thinking of making it based on average times to complete task for this stage)
-			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(time.After(1 * time.Second))},
+			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(time.After(auto.timer.Av()))},
 			{Dir: reflect.SelectRecv, Chan: auto.doneChan},
 		})
 
 		switch chosen {
 		// New value comes in
 		case 0:
+			endTimer := auto.timer.Start()
 			auto.callFunc(recv)
 			auto.itemInStage.Decrement()
+			endTimer()
 		// Timer goes off and worker shuts down, or done chan ends goroutine
 		case 1, 2:
 			auto.nodeCounter.Decrement()
