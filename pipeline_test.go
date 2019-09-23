@@ -1,6 +1,9 @@
 package PipinHot
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func newTestPipe(n uint) Pipeline {
 	b := NewPipelineBuilder()
@@ -174,7 +177,7 @@ func TestPipeline_Flush(t *testing.T) {
 
 		results := pipe.Flush()
 
-		if equal := softEqual(tCase.expectedOutput, results); !equal {
+		if !softEqual(tCase.expectedOutput, results) {
 			t.Errorf("Flush is messing up: %v != %v", tCase.expectedOutput, results)
 		}
 	}
@@ -205,13 +208,12 @@ func TestPipeline(t *testing.T) {
 		}
 	}()
 
-	pipe := newTestPipe(1)
-	defer pipe.Close()
-
-	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200}
-
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+	expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}
 	results := make([]interface{}, 0, len(input))
+
+	pipe := newTestPipe(1)
+	results = results[:0]
 
 	err := pipe.Execute(input...)
 	if err != nil {
@@ -228,9 +230,11 @@ func TestPipeline(t *testing.T) {
 	flushed := pipe.Flush()
 	results = append(results, flushed...)
 
-	if isEqual := softEqual(results, expectedResults); !isEqual {
+	if !softEqual(results, expectedResults) {
 		t.Errorf("Results don't match: %v != %v", results, expectedResults)
 	}
+
+	pipe.Close()
 }
 
 func TestAutoPipeline(t *testing.T) {
@@ -271,16 +275,23 @@ func TestAutoPipeline(t *testing.T) {
 func BenchmarkPipeline(b *testing.B) {
 	defer func() {
 		if r := recover(); r != nil {
-			b.Error("TestPipeline panicked.")
+			b.Errorf("TestPipeline panicked: %v", r)
 		}
 	}()
 
-	for i := 0; i < b.N; i++ {
-		pipe := newTestPipe(1)
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+	expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}
+	results := make([]interface{}, 0, len(input))
 
-		input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-		expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}
-		results := make([]interface{}, 0, len(input))
+	b1 := NewPipelineBuilder()
+	b1.AddStage(1, func(i int) int { return i * i })
+	b1.AddStage(1, func(i int) int { return i * 2 })
+	pipe := b1.Build()
+	defer pipe.Close()
+
+	for i := 0; i < b.N; i++ {
+		fmt.Printf("%d of %d", i, b.N)
+		results = make([]interface{}, 0, len(input))
 
 		err := pipe.Execute(input...)
 		if err != nil {
@@ -297,11 +308,9 @@ func BenchmarkPipeline(b *testing.B) {
 		flushed := pipe.Flush()
 		results = append(results, flushed...)
 
-		if isEqual := softEqual(results, expectedResults); !isEqual {
+		if !softEqual(results, expectedResults) {
 			b.Errorf("Results don't match: %v != %v", results, expectedResults)
 		}
-
-		pipe.Close()
 	}
 }
 
@@ -312,11 +321,15 @@ func BenchmarkAutoPipeline(b *testing.B) {
 		}
 	}()
 
+	input := []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+	expectedResults := []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}
+	results := make([]interface{}, 0, len(input))
+
 	for i := 0; i < b.N; i++ {
 		pipe := newTestPipe(0)
-		results := make([]interface{}, 0)
+		results = results[:0]
 
-		err := pipe.Execute(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+		err := pipe.Execute(input...)
 		if err != nil {
 			b.Error(err)
 			return
@@ -329,9 +342,9 @@ func BenchmarkAutoPipeline(b *testing.B) {
 		results = append(results, v)
 
 		flushed := pipe.Flush()
-		results = append(results, flushed)
+		results = append(results, flushed...)
 
-		if isEqual := softEqual(results, []interface{}{2, 8, 18, 32, 50, 72, 98, 128, 162, 200, 242, 288, 338, 392, 450, 512, 578, 648, 722, 800}); !isEqual {
+		if !softEqual(results, expectedResults) {
 			b.Error("Results don't match!")
 		}
 

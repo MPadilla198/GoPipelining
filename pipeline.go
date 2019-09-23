@@ -24,7 +24,7 @@ func buildPipeline(stages []builderStage) Pipeline {
 
 	waitingForNextChan := make(chan interface{})
 
-	newPipeline := &pipeline{inType, inChan, reflect.Zero(outChanType), reflect.MakeChan(reflect.ChanOf(reflect.BothDir, done), 0), make([]stageDispatcher, len(stages)), 0, false, waitingForNextChan, utils.NewQueue()}
+	newPipeline := &pipeline{inType, inChan, reflect.Zero(outChanType), reflect.MakeChan(reflect.ChanOf(reflect.BothDir, done), 0), make([]stageDispatcher, len(stages)), 0, false, waitingForNextChan, utils.NewQueue(), false}
 
 	for i, stage := range stages {
 		newPipeline.stageDispatchers[i] = newStageDispatcher(stage)
@@ -64,11 +64,14 @@ type pipeline struct {
 
 	// Stores values coming out of pipeline
 	values utils.Queue
+
+	ready bool
 }
 
 func (p *pipeline) start() {
 	go func() {
 		for {
+			p.ready = true
 			chosen, recv, _ := reflect.Select([]reflect.SelectCase{
 				{Dir: reflect.SelectRecv, Chan: p.outChan},
 				{Dir: reflect.SelectRecv, Chan: p.endPipeline},
@@ -88,6 +91,9 @@ func (p *pipeline) start() {
 			}
 		}
 	}()
+
+	for !p.ready {
+	}
 }
 
 func (p *pipeline) Execute(vals ...interface{}) error {
@@ -138,6 +144,9 @@ func (p *pipeline) Close() {
 	// s.Close() closes all input channels
 	// closes in channel so no new
 	p.inChan.Close()
+
+	for p.itemsInPipeline > 0 {
+	}
 
 	// Close all dispatchers
 	for _, s := range p.stageDispatchers {

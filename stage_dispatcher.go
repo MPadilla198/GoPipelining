@@ -3,13 +3,14 @@ package PipinHot
 import (
 	"github.com/MPadilla198/PipinHot/utils"
 	"reflect"
+	"sync"
 	"time"
 )
 
 type stageDispatcher interface {
 	callFunc(value reflect.Value)
 	Start(inChan reflect.Value) (outChan reflect.Value)
-	newWorker()
+	startWorkers(n uint)
 	Close()
 }
 
@@ -33,7 +34,7 @@ func newStageDispatcher(stage builderStage) stageDispatcher {
 			itemInStage: 0,
 		}
 	}
-	return &manualStageDispatcher{inChan, outChan, stage.fn, doneChan, stage.nodeCnt}
+	return &manualStageDispatcher{inChan, outChan, stage.fn, sync.WaitGroup{}, doneChan, stage.nodeCnt}
 }
 
 type manualStageDispatcher struct {
@@ -43,12 +44,15 @@ type manualStageDispatcher struct {
 	// Function
 	fn reflect.Value
 
+	wg sync.WaitGroup
+
 	doneChan reflect.Value
 	nodeCnt  uint
 }
 
 func (man *manualStageDispatcher) callFunc(recv reflect.Value) {
 	toSend := man.fn.Call([]reflect.Value{recv})[0]
+	defer man.wg.Done()
 
 	// Meant to end the race condition of sending over a channel that could potentially be closed
 	chosen, _, _ := reflect.Select([]reflect.SelectCase{
@@ -63,36 +67,42 @@ func (man *manualStageDispatcher) callFunc(recv reflect.Value) {
 	}
 }
 
-func (man *manualStageDispatcher) newWorker() {
-	for {
-		// Select from input of channels: in and done
-		chosen, recv, _ := reflect.Select([]reflect.SelectCase{
-			{Dir: reflect.SelectRecv, Chan: man.inChan},
-			{Dir: reflect.SelectRecv, Chan: man.doneChan},
-		})
-		switch chosen {
-		case 0: // Something comes in the channel
-			// Call fptr with input from in-channel as param
-			// And send it through the output channel
-			man.callFunc(recv)
-		case 1: // Done channel
-			return
-		}
+func (man *manualStageDispatcher) startWorkers(n uint) {
+	for i := uint(0); i < n; i++ {
+		go func() {
+			for {
+				// Select from input of channels: in and done
+				chosen, recv, _ := reflect.Select([]reflect.SelectCase{
+					{Dir: reflect.SelectRecv, Chan: man.inChan},
+					{Dir: reflect.SelectRecv, Chan: man.doneChan},
+				})
+				switch chosen {
+				case 0: // Something comes in the channel
+					// Call fptr with input from in-channel as param
+					// And send it through the output channel
+					man.wg.Add(1)
+					man.callFunc(recv)
+				case 1: // Done channel
+					return
+				}
+			}
+		}()
 	}
 }
 
 func (man *manualStageDispatcher) Start(inChan reflect.Value) reflect.Value {
 	man.inChan = inChan
 
-	for i := uint(0); i < man.nodeCnt; i++ {
-		go man.newWorker()
-	}
+	man.startWorkers(man.nodeCnt)
 
 	return man.outChan
 }
 
 func (man *manualStageDispatcher) Close() {
 	man.doneChan.Close()
+
+	man.wg.Wait()
+
 	man.outChan.Close()
 }
 
@@ -125,26 +135,32 @@ func (auto *automaticStageDispatcher) callFunc(recv reflect.Value) {
 	}
 }
 
-func (auto *automaticStageDispatcher) newWorker() {
-	for {
-		chosen, recv, _ := reflect.Select([]reflect.SelectCase{
-			{Dir: reflect.SelectRecv, Chan: auto.intoFnChan},
-			{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(time.After(auto.timer.Av()))},
-			{Dir: reflect.SelectRecv, Chan: auto.doneChan},
-		})
+func (auto *automaticStageDispatcher) startWorkers(n uint) {
+	for i := uint(0); i < n; i++ {
+		go func() {
+			for {
+				chosen, recv, _ := reflect.Select([]reflect.SelectCase{
+					{Dir: reflect.SelectRecv, Chan: auto.intoFnChan},
+					{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(time.After(auto.timer.Av()))},
+					{Dir: reflect.SelectRecv, Chan: auto.doneChan},
+				})
 
-		switch chosen {
-		// New value comes in
-		case 0:
-			endTimer := auto.timer.Start()
-			auto.callFunc(recv)
-			auto.itemInStage.Decrement()
-			endTimer()
-		// Timer goes off and worker shuts down, or done chan ends goroutine
-		case 1, 2:
-			auto.nodeCounter.Decrement()
-			return
-		}
+				switch chosen {
+				// New value comes in
+				case 0:
+					endTimer := auto.timer.Start()
+					auto.callFunc(recv)
+					auto.itemInStage.Decrement()
+					endTimer()
+				// Timer goes off and worker shuts down, or done chan ends goroutine
+				case 1, 2:
+					auto.nodeCounter.Decrement()
+					return
+				}
+			}
+		}()
+
+		auto.nodeCounter.Increment()
 	}
 }
 
@@ -153,20 +169,20 @@ func (auto *automaticStageDispatcher) Start(inChan reflect.Value) reflect.Value 
 
 	// This goroutine will be in control of the amount of workers in the stage
 	go func() {
+		selectCases := []reflect.SelectCase{
+			{Dir: reflect.SelectRecv, Chan: auto.inChan},
+			{Dir: reflect.SelectRecv, Chan: auto.doneChan},
+		}
+
 		for {
-			chosen, recv, _ := reflect.Select([]reflect.SelectCase{
-				{Dir: reflect.SelectRecv, Chan: auto.inChan},
-				{Dir: reflect.SelectRecv, Chan: auto.doneChan},
-			})
+			chosen, recv, _ := reflect.Select(selectCases)
 			switch chosen {
 			case 0:
 				auto.itemInStage.Increment()
 
-				if auto.itemInStage.Get() > auto.nodeCounter.Get() {
+				if delta := auto.itemInStage.Get() - auto.nodeCounter.Get(); delta > 0 {
 					// Start Worker
-					go auto.newWorker()
-
-					auto.nodeCounter.Increment()
+					auto.startWorkers(uint(delta))
 				}
 
 				auto.intoFnChan.Send(recv)

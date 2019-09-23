@@ -106,7 +106,7 @@ func (t *times) add(n int64) ([]int64, int64, bool) {
 
 	// save and clear t.times[]
 	times := t.times
-	t.times = t.times[:] // Resets slice without touching underlying array
+	t.times = t.times[:0] // Resets slice without touching underlying array
 
 	// save and clear t.totalTime
 	totalTime := t.totalTime
