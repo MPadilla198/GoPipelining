@@ -28,7 +28,7 @@ func newStageDispatcher(stage builderStage) stageDispatcher {
 			outChan:     outChan,
 			intoFnChan:  intoFnChan,
 			fn:          stage.fn,
-			timer:       utils.NewTimer(10, 1*time.Second),
+			timer:       utils.NewTimer(10, 1*time.Second, utils.Av()),
 			doneChan:    doneChan,
 			nodeCounter: 0,
 			itemInStage: 0,
@@ -141,7 +141,7 @@ func (auto *automaticStageDispatcher) startWorkers(n uint) {
 			for {
 				chosen, recv, _ := reflect.Select([]reflect.SelectCase{
 					{Dir: reflect.SelectRecv, Chan: auto.intoFnChan},
-					{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(time.After(auto.timer.Av()))},
+					{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(auto.timer.Get())},
 					{Dir: reflect.SelectRecv, Chan: auto.doneChan},
 				})
 

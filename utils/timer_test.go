@@ -39,7 +39,6 @@ func TestTimer_Av(t *testing.T) {
 	}
 
 	waitGroup.Wait()
-	t.Error()
 }
 
 func TestTimer_Std(t *testing.T) {
@@ -63,9 +62,11 @@ func TestTimer_Std(t *testing.T) {
 	}
 
 	waitGroup.Wait()
-	t.Error()
 }
 
 func TestTimer(t *testing.T) {
 
+}
+
+func BenchmarkTimer(b *testing.B) {
 }

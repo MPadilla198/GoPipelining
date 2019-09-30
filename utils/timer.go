@@ -7,6 +7,7 @@ import (
 )
 
 type ComputeDuration func(totalTime int64, times []int64) time.Duration
+type StopTimer func() time.Duration
 
 func Av() ComputeDuration {
 	return func(totalTime int64, times []int64) time.Duration {
@@ -32,7 +33,11 @@ func Std(n float64) ComputeDuration {
 }
 
 type Timer interface {
-	Start() func() time.Duration
+	// Starts timer and returns StopTimer function that when called ends timer and returns computed duration
+	Start() StopTimer
+
+	// Returns previously computed duration
+	Get() time.Duration
 }
 
 func NewTimer(cap int, placeholderDuration time.Duration, duration ComputeDuration) Timer {
@@ -55,7 +60,7 @@ type timer struct {
 	savedReturn time.Duration
 }
 
-func (t *timer) Start() func() time.Duration {
+func (t *timer) Start() StopTimer {
 	var startTime time.Time
 
 	endFunc := func() time.Duration {
@@ -79,4 +84,11 @@ func (t *timer) Start() func() time.Duration {
 	startTime = time.Now()
 
 	return endFunc
+}
+
+func (t *timer) Get() time.Duration {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+
+	return t.savedReturn
 }

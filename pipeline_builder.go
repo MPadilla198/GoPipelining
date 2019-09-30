@@ -4,6 +4,12 @@ import (
 	"reflect"
 )
 
+/*
+
+TODO - Rework builder to use cap instead of setNodeCnt, gonna make all pipelines automatic with caps instead on each stage
+
+*/
+
 // For a while it'll just use interface{}
 type Function interface{}
 
