@@ -6,111 +6,77 @@ import (
 	"time"
 )
 
-type Timer interface {
-	Start() func()
-	Av() time.Duration
-	Std(float64) time.Duration
+type ComputeDuration func(totalTime int64, times []int64) time.Duration
+
+func Av() ComputeDuration {
+	return func(totalTime int64, times []int64) time.Duration {
+		return time.Duration(totalTime / int64(len(times)))
+	}
 }
 
-func NewTimer(sampleSize int, placeholder time.Duration) Timer {
+func Std(n float64) ComputeDuration {
+	return func(totalTime int64, times []int64) time.Duration {
+		mean := float64(totalTime) / float64(len(times))
+
+		var variance float64
+
+		for _, t := range times {
+			variance += math.Pow(float64(t)-mean, 2.0)
+		}
+
+		variance /= float64(len(times))
+
+		// calculates std
+		return time.Duration(mean + (math.Sqrt(variance) - n))
+	}
+}
+
+type Timer interface {
+	Start() func() time.Duration
+}
+
+func NewTimer(cap int, placeholderDuration time.Duration, duration ComputeDuration) Timer {
 	return &timer{
-		sampleSize: sampleSize,
-		times:      newTimes(sampleSize),
-		mux:        sync.RWMutex{},
-		av:         int64(placeholder),
-		std:        int64(placeholder),
+		totalTime:   0,
+		times:       make([]int64, 0, cap),
+		fn:          duration,
+		mux:         sync.Mutex{},
+		savedReturn: placeholderDuration,
 	}
 }
 
 type timer struct {
-	sampleSize int // used for cap size in *times, stays const.
+	totalTime int64
+	times     []int64
 
-	times *times
+	fn  ComputeDuration
+	mux sync.Mutex
 
-	mux sync.RWMutex
-	av  int64
-	std int64
+	savedReturn time.Duration
 }
 
-func (t *timer) Start() (end func()) {
+func (t *timer) Start() func() time.Duration {
 	var startTime time.Time
 
-	end = func() {
-		timeLapsed := time.Since(startTime)
+	endFunc := func() time.Duration {
+		timeLapsed := int64(time.Since(startTime))
 
-		times, totalTime, recalculate := t.times.add(int64(timeLapsed))
+		t.mux.Lock()
+		defer t.mux.Unlock()
 
-		if recalculate {
-			go func() {
-				newAv := totalTime / int64(t.sampleSize)
+		t.totalTime += timeLapsed
+		t.times = append(t.times, timeLapsed)
 
-				var variation float64
-				for _, v := range times {
-					variation += math.Pow(float64(v-newAv), 2)
-				}
-
-				variation /= float64(t.sampleSize)
-
-				newStd := math.Sqrt(variation)
-
-				t.mux.Lock()
-				defer t.mux.Unlock()
-
-				t.av = newAv
-				t.std = int64(newStd)
-			}()
+		if cap(t.times) == len(t.times) {
+			t.savedReturn = t.fn(t.totalTime, t.times)
+			t.times = t.times[:0]
+			t.totalTime = 0
 		}
+
+		return t.savedReturn
 	}
 
 	startTime = time.Now()
 
-	return
-}
-
-func (t *timer) Av() time.Duration {
-	t.mux.RLock()
-	defer t.mux.RUnlock()
-
-	return time.Duration(t.av)
-}
-
-func (t *timer) Std(n float64) time.Duration {
-	t.mux.RLock()
-	defer t.mux.RUnlock()
-
-	return time.Duration(t.av + int64(float64(t.std)*n))
-}
-
-type times struct {
-	mux       sync.Mutex
-	totalTime int64
-	times     []int64
-}
-
-func newTimes(cap int) *times {
-	return &times{sync.Mutex{}, 0, make([]int64, 0, cap)}
-}
-
-// takes in new value to add
-// Returns times array, sum of times in array, and if times reached cap and has been reset
-func (t *times) add(n int64) ([]int64, int64, bool) {
-	t.mux.Lock()
-	defer t.mux.Unlock()
-
-	t.times = append(t.times, n)
-	t.totalTime += n
-
-	if len(t.times) != cap(t.times) {
-		return t.times, t.totalTime, false
-	}
-
-	// save and clear t.times[]
-	times := t.times
-	t.times = t.times[:0] // Resets slice without touching underlying array
-
-	// save and clear t.totalTime
-	totalTime := t.totalTime
-	t.totalTime = 0
-
-	return times, totalTime, true
+	return endFunc
 }

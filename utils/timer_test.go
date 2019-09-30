@@ -19,7 +19,7 @@ func getTestCases() []time.Duration {
 }
 
 func TestTimer_Av(t *testing.T) {
-	timer := NewTimer(10, time.Duration(100*time.Millisecond))
+	timer := NewTimer(10, 100*time.Millisecond, Av())
 
 	testCases := getTestCases()
 	waitGroup := sync.WaitGroup{}
@@ -32,9 +32,9 @@ func TestTimer_Av(t *testing.T) {
 
 			done := tTimer.Start()
 			time.Sleep(cas)
-			done()
+			av := done()
 
-			t.Logf("Test case #%d: %v milliseconds", caseNum, int64(tTimer.Av()))
+			t.Logf("Test case #%d: %v milliseconds", caseNum, av)
 		}(i, c, timer)
 	}
 
@@ -43,7 +43,27 @@ func TestTimer_Av(t *testing.T) {
 }
 
 func TestTimer_Std(t *testing.T) {
+	timer := NewTimer(10, 100*time.Millisecond, Std(0))
 
+	testCases := getTestCases()
+	waitGroup := sync.WaitGroup{}
+
+	waitGroup.Add(len(testCases))
+
+	for i, c := range testCases {
+		go func(caseNum int, cas time.Duration, tTimer Timer) {
+			defer waitGroup.Done()
+
+			done := tTimer.Start()
+			time.Sleep(cas)
+			std := done()
+
+			t.Logf("Test case #%d: %v milliseconds", caseNum, std)
+		}(i, c, timer)
+	}
+
+	waitGroup.Wait()
+	t.Error()
 }
 
 func TestTimer(t *testing.T) {
